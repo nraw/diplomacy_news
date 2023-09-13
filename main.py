@@ -14,7 +14,8 @@ def main():
     orders, units_by_player, territories, season = get_backstabbr()
     summaries = get_battles(orders, territories)
     news = get_news(summaries)
-    main_headline = create_main_headline(news)
+    #  main_headline = create_main_headline(news)
+    main_headline = ""
     news_list = process_news(news)
     generate_newspaper(news, main_headline)
 
@@ -236,6 +237,9 @@ def process_news(news):
         news_piece = news_piece.split("Title: ")[1]
         title, news_piece = news_piece.split("Subtitle: ", 1)
         subtitle, paragraph = news_piece.split("Paragraph: ", 1)
+        title = title.strip().strip('"')
+        subtitle = subtitle.strip().strip('"')
+        paragraph = paragraph.strip().strip('"')
         news_list += [(title, subtitle, paragraph)]
     return news_list
 
