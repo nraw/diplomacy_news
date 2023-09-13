@@ -1,4 +1,5 @@
 import re
+from collections import Counter
 from pathlib import Path
 
 import yaml
@@ -18,7 +19,8 @@ def main():
     #  main_headline = create_main_headline(news)
     main_headline = ""
     news_list = process_news(news)
-    generate_newspaper(news_list, main_headline)
+    standing = get_standing(territories)
+    generate_newspaper(news_list, main_headline, season, standing)
 
 
 def get_battles(orders, territories):
@@ -179,14 +181,25 @@ def get_territories_by_country(country, battle_possessions):
 
 def get_news(summaries):
     news = []
-    for summary in tqdm(summaries):
+    battle_summaries = [s for s in summaries if s["countries_involved"].count("-") > 1]
+    for summary in tqdm(battle_summaries):
         piece_of_news = create_piece_of_news_prompt(summary)
         news += [piece_of_news]
+    other_summaries = "\n".join(
+        [
+            s["pretty_battle_orders"]
+            for s in summaries
+            if s["countries_involved"].count("-") == 1
+        ]
+    )
+    other_news = create_other_news_prompt(other_summaries)
+    other_news_format = f"Title: In other news...\nSubtitle: Other movements around Europe\nParagraph: {other_news}"
+    news += [other_news_format]
     return news
 
 
 def create_piece_of_news_prompt(summary):
-    prompt = f"""I will share with you the adjunction of orders from a Diplomacy game.
+    prompt = f"""I will share with you the adjudication of orders from a Diplomacy game.
 You will invent the headline for a newspaper that covers European Geopolitics that airs in an alternative 1903. Some territories might be owned by different countries than they were in history.
 Invent extra drama and fake people involved.
 For each headline, provide a title, subtitle and a paragraph.
@@ -210,6 +223,22 @@ Paragraph: paragraph goes here
 Output:"""
     answer = ping_gpt(prompt, temp=1)
     return answer
+
+
+def create_other_news_prompt(other_summaries):
+    prompt = f"""I will share with you the adjudication of orders from a Diplomacy game.
+These are only the moves that did not involve any conflict between countries, but these countries could have been in conflicts elsewhere.
+You will write a paragraph that will go to the "In other news" section of a newspaper. Try to briefly describe what happened.
+
+Report:
+---
+{other_summaries}
+---
+
+Output:"""
+    other_news = ping_gpt(prompt, temp=1)
+
+    return other_news
 
 
 def create_main_headline(news):
@@ -247,9 +276,20 @@ def process_news(news):
     return news_list
 
 
-def generate_newspaper(news_list, main_headline):
+def get_standing(territories):
+    standing_list = Counter(territories.values()).most_common()
+    standing = [s[0] + " " + str(s[1]) for s in standing_list]
+    return standing
+
+
+def generate_newspaper(news_list, main_headline, season, standing):
     env = Environment(loader=FileSystemLoader("."))
     template = env.get_template("template.html")
 
-    newspaper = template.render(news_list=news_list, main_headline=main_headline)
+    newspaper = template.render(
+        news_list=news_list,
+        main_headline=main_headline,
+        season=season,
+        standing=standing,
+    )
     Path("index.html").write_text(newspaper)
