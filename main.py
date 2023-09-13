@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 import yaml
@@ -17,7 +18,7 @@ def main():
     #  main_headline = create_main_headline(news)
     main_headline = ""
     news_list = process_news(news)
-    generate_newspaper(news, main_headline)
+    generate_newspaper(news_list, main_headline)
 
 
 def get_battles(orders, territories):
@@ -240,6 +241,8 @@ def process_news(news):
         title = title.strip().strip('"')
         subtitle = subtitle.strip().strip('"')
         paragraph = paragraph.strip().strip('"')
+        paragraph = re.sub("^In a.*?, ", "", paragraph)
+        paragraph = paragraph[0].upper() + paragraph[1:]
         news_list += [(title, subtitle, paragraph)]
     return news_list
 
