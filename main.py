@@ -1,3 +1,4 @@
+import json
 import re
 from collections import Counter
 from pathlib import Path
@@ -7,6 +8,7 @@ from jinja2 import Environment, FileSystemLoader
 from tqdm import tqdm
 
 from diplomacy_news.get_backstabbr import get_backstabbr
+from diplomacy_news.get_war_map import get_battles_coords, get_war_map
 from diplomacy_news.ping_gpt import ping_gpt
 
 countries = ["Austria", "England", "France", "Germany", "Italy", "Russia", "Turkey"]
@@ -14,6 +16,7 @@ countries = ["Austria", "England", "France", "Germany", "Italy", "Russia", "Turk
 
 def main():
     orders, units_by_player, territories, season = get_backstabbr()
+
     summaries = get_battles(orders, territories)
     news = get_news(summaries)
     #  main_headline = create_main_headline(news)
@@ -24,11 +27,15 @@ def main():
 
 
 def get_battles(orders, territories):
+    metadata = json.load(open("diplomacy_news/territories.json"))
     all_regions = get_all_regions(orders)
     battles = check_battles(all_regions, orders, territories)
     battles_orders = get_battles_orders(battles, orders)
     battles_possessions = get_battles_possessions(battles, territories)
-    summaries = get_summaries(battles, battles_orders, battles_possessions)
+    battles_coords = get_battles_coords(battles, metadata)
+    summaries = get_summaries(
+        battles, battles_orders, battles_possessions, battles_coords
+    )
     return summaries
 
 
@@ -130,18 +137,24 @@ def get_battle_possessions(battle, territories):
     return battle_possessions
 
 
-def get_summaries(battles, battles_orders, battles_possessions):
+def get_summaries(battles, battles_orders, battles_possessions, battles_coords):
     summaries = []
-    for battle, battle_orders, battle_possessions in zip(
-        battles, battles_orders, battles_possessions
+    for i, battle, battle_orders, battle_possessions, battle_coords in zip(
+        range(len(battles)),
+        battles,
+        battles_orders,
+        battles_possessions,
+        battles_coords,
     ):
         countries_involved = get_countries_involved(battle_orders, battle_possessions)
         pretty_battle_orders = get_pretty_battle_orders(battle_orders)
         pretty_battle_possessions = get_pretty_battle_possessions(battle_possessions)
+        battle_map = get_battle_map(battle_coords, i)
         summary = dict(
             countries_involved=countries_involved,
             pretty_battle_orders=pretty_battle_orders,
             pretty_battle_possessions=pretty_battle_possessions,
+            battle_map=battle_map,
         )
         summaries += [summary]
     return summaries
@@ -182,9 +195,10 @@ def get_territories_by_country(country, battle_possessions):
 def get_news(summaries):
     news = []
     battle_summaries = [s for s in summaries if s["countries_involved"].count("-") > 1]
+
     for summary in tqdm(battle_summaries):
         piece_of_news = create_piece_of_news_prompt(summary)
-        news += [piece_of_news]
+        news += [{"newsline": piece_of_news, "summary": summary}]
     other_summaries = "\n".join(
         [
             s["pretty_battle_orders"]
@@ -194,7 +208,7 @@ def get_news(summaries):
     )
     other_news = create_other_news_prompt(other_summaries)
     other_news_format = f"Title: In other news...\nSubtitle: Other movements around Europe\nParagraph: {other_news}"
-    news += [other_news_format]
+    news += [{"newsline": other_news_format, "summary": other_summaries}]
     return news
 
 
@@ -263,7 +277,8 @@ Output:"""
 
 def process_news(news):
     news_list = []
-    for news_piece in news:
+    for news_meta in news:
+        news_piece = news_meta["newsline"]
         news_piece = news_piece.split("Title: ")[1]
         title, news_piece = news_piece.split("Subtitle: ", 1)
         subtitle, paragraph = news_piece.split("Paragraph: ", 1)
@@ -272,7 +287,9 @@ def process_news(news):
         paragraph = paragraph.strip().strip('"')
         paragraph = re.sub("^In a.*?, ", "", paragraph)
         paragraph = paragraph[0].upper() + paragraph[1:]
-        news_list += [(title, subtitle, paragraph)]
+        news_list += [
+            {"newsline": (title, subtitle, paragraph), "summary": news_meta["summary"]}
+        ]
     return news_list
 
 
