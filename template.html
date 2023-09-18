@@ -24,13 +24,16 @@
     <div class="collumns">
 			{% for news_piece in news_list %}
         <div class="collumn">
-					<div class="head"><span class="headline hl3">{{ news_piece.newsline.title }}</span><p><span class="headline hl4">{{ news_piece.newsline.subtitle }}</span></p></div>
+					<div class="head"><span class="headline hl3">{{ news_piece.newsline[0] }}</span><p><span class="headline hl4">{{ news_piece.newsline[1] }}</span></p></div>
 
 				<figure class="figure">
-					<img class="media" src={{news_piece.summary.}} alt="">
-									<figcaption class="figcaption">Hermine hoping for courage.</figcaption>
+					{% if "battle_map" in news_piece.summary %}
+					<img class="media" src={{news_piece.summary.battle_map}} alt="">
+									<!-- <figcaption class="figcaption">Hermine hoping for courage.</figcaption> -->
 							</figure>
-					{{ news_piece.newsline.paragraph }}
+
+					{% endif %}
+					{{ news_piece.newsline[2] }}
 				</div>
 			{% endfor %}
   <!--       <div class="collumn"> -->

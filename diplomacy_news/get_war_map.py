@@ -15,9 +15,9 @@ def get_war_map(url):
     svg_element = get_svg_element(url)
 
     #  Path("/tmp/lol.svg").write_text(str(svg_element))
-    background_image = Image.open("map_background.png")
+    background_image = Image.open("assets/map_background.png")
     png_data = cairosvg.svg2png(
-        bytestringstr(svg_element),
+        str(svg_element),
         parent_width=background_image.size[0],
         parent_height=background_image.size[1],
     )

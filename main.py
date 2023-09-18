@@ -8,7 +8,8 @@ from jinja2 import Environment, FileSystemLoader
 from tqdm import tqdm
 
 from diplomacy_news.get_backstabbr import get_backstabbr
-from diplomacy_news.get_war_map import get_battles_coords, get_war_map
+from diplomacy_news.get_war_map import (get_battle_map, get_battles_coords,
+                                        get_war_map)
 from diplomacy_news.ping_gpt import ping_gpt
 
 countries = ["Austria", "England", "France", "Germany", "Italy", "Russia", "Turkey"]

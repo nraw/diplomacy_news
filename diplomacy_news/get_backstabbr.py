@@ -4,6 +4,8 @@ import re
 import requests
 from bs4 import BeautifulSoup
 
+from diplomacy_news.get_war_map import get_war_map
+
 
 def get_backstabbr():
     base_url = "https://www.backstabbr.com"
@@ -11,11 +13,13 @@ def get_backstabbr():
     res = requests.get(url)
     bs = BeautifulSoup(res.text, "lxml")
     stage = get_property("stage", res)
-    if stage in ["SATISFIED", "NEEDS_BUILDS"]:
+    if stage in ["SATISFIED", "NEEDS_BUILDS", "NEEDS_ORDERS"]:
         prev_season = bs.find("a", {"id": "history_previous_season"})["href"]
         url = base_url + prev_season
         res = requests.get(url)
         bs = BeautifulSoup(res.text, "lxml")
+        get_war_map(url)
+
         #  stage = json.loads(re.search("var stage = (.*)", res.text)[1][:-1])
     season = bs.find("a", {"id": "history_current_season"})
     if season:
