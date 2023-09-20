@@ -1,5 +1,6 @@
 import json
 import re
+from pathlib import Path
 
 import requests
 from bs4 import BeautifulSoup
@@ -7,7 +8,7 @@ from bs4 import BeautifulSoup
 from diplomacy_news.get_war_map import get_war_map
 
 
-def get_backstabbr():
+def get_backstabbr(force=False):
     base_url = "https://www.backstabbr.com"
     url = base_url + "/game/KGB/5178831816753152"
     res = requests.get(url)
@@ -18,12 +19,15 @@ def get_backstabbr():
         url = base_url + prev_season
         res = requests.get(url)
         bs = BeautifulSoup(res.text, "lxml")
-        get_war_map(url)
 
         #  stage = json.loads(re.search("var stage = (.*)", res.text)[1][:-1])
     season = bs.find("a", {"id": "history_current_season"})
     if season:
         season = season.text.strip().title()
+    previous_news_season = get_previous_news_season()
+    if not force and previous_news_season == season:
+        return None, None, None, None
+    get_war_map(url)
     orders = get_property("orders", res)
     units_by_player = get_property("units_by_player", res)
     territories = get_property("territories", res)
@@ -41,3 +45,10 @@ def get_property(property_name, res):
     else:
         property = ""
     return property
+
+
+def get_previous_news_season():
+    previous_news = Path("index.html").read_text()
+    bs = BeautifulSoup(previous_news, "lxml")
+    previous_news_season = bs.find("span", {"id": "season"}).text
+    return previous_news_season

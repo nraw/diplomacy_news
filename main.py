@@ -8,16 +8,17 @@ from jinja2 import Environment, FileSystemLoader
 from tqdm import tqdm
 
 from diplomacy_news.get_backstabbr import get_backstabbr
-from diplomacy_news.get_war_map import (get_battle_map, get_battles_coords,
-                                        get_war_map)
+from diplomacy_news.get_war_map import get_battle_map, get_battles_coords
 from diplomacy_news.ping_gpt import ping_gpt
 
 countries = ["Austria", "England", "France", "Germany", "Italy", "Russia", "Turkey"]
 
 
 def main():
-    orders, units_by_player, territories, season = get_backstabbr()
-
+    force = True
+    orders, units_by_player, territories, season = get_backstabbr(force)
+    if orders is None:
+        return None
     summaries = get_battles(orders, territories)
     news = get_news(summaries)
     #  main_headline = create_main_headline(news)
@@ -35,7 +36,7 @@ def get_battles(orders, territories):
     battles_possessions = get_battles_possessions(battles, territories)
     battles_coords = get_battles_coords(battles, metadata)
     summaries = get_summaries(
-        battles, battles_orders, battles_possessions, battles_coords
+        battles, battles_orders, battles_possessions, battles_coords, metadata
     )
     return summaries
 
@@ -138,7 +139,9 @@ def get_battle_possessions(battle, territories):
     return battle_possessions
 
 
-def get_summaries(battles, battles_orders, battles_possessions, battles_coords):
+def get_summaries(
+    battles, battles_orders, battles_possessions, battles_coords, metadata
+):
     summaries = []
     for i, battle, battle_orders, battle_possessions, battle_coords in zip(
         range(len(battles)),
@@ -148,8 +151,10 @@ def get_summaries(battles, battles_orders, battles_possessions, battles_coords):
         battles_coords,
     ):
         countries_involved = get_countries_involved(battle_orders, battle_possessions)
-        pretty_battle_orders = get_pretty_battle_orders(battle_orders)
-        pretty_battle_possessions = get_pretty_battle_possessions(battle_possessions)
+        pretty_battle_orders = get_pretty_battle_orders(battle_orders, metadata)
+        pretty_battle_possessions = get_pretty_battle_possessions(
+            battle_possessions, metadata
+        )
         battle_map = get_battle_map(battle_coords, i)
         summary = dict(
             countries_involved=countries_involved,
@@ -169,18 +174,39 @@ def get_countries_involved(battle_orders, battle_possessions):
     return countries_involved
 
 
-def get_pretty_battle_orders(battle_orders):
-    pretty_battle_orders = yaml.dump(battle_orders)
+def get_pretty_battle_orders(battle_orders, metadata):
+    long_battle_orders = battle_orders.copy()
+    long_battle_orders = [
+        get_full_names_dictionary(battle_order, metadata)
+        for battle_order in long_battle_orders
+    ]
+    pretty_battle_orders = yaml.dump(long_battle_orders)
     return pretty_battle_orders
 
 
-def get_pretty_battle_possessions(battle_possessions):
+def get_full_names_dictionary(any_dict, metadata):
+    random_dict = any_dict.copy()
+    for key, value in random_dict.items():
+        if type(value) == str and value in metadata:
+            random_dict[key] = metadata[value]["name"]
+        if type(value) == dict:
+            subdict = get_full_names_dictionary(value, metadata)
+            random_dict[key] = subdict
+
+    return random_dict
+
+
+def get_pretty_battle_possessions(battle_possessions, metadata):
     territories_by_country = {
         country: get_territories_by_country(country, battle_possessions)
         for country in countries
     }
     territories_by_country = {c: t for c, t in territories_by_country.items() if t}
-    pretty_battle_possessions = yaml.dump(territories_by_country)
+    long_ter_by_country = {
+        c: [metadata[ter]["name"] for ter in t]
+        for c, t in territories_by_country.items()
+    }
+    pretty_battle_possessions = yaml.dump(long_ter_by_country)
     return pretty_battle_possessions
 
 
@@ -311,3 +337,7 @@ def generate_newspaper(news_list, main_headline, season, standing):
         standing=standing,
     )
     Path("index.html").write_text(newspaper)
+
+
+if __name__ == "__main__":
+    main()
