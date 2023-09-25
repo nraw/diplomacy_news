@@ -242,7 +242,7 @@ def get_news(summaries):
 def create_piece_of_news_prompt(summary):
     prompt = f"""I will share with you the adjudication of orders from a Diplomacy game.
 You will invent the headline for a newspaper that covers European Geopolitics that airs in an alternative 1903. Some territories might be owned by different countries than they were in history.
-Invent extra drama and fake people involved.
+Invent extra drama and fake people involved. Add their quotes on the situation.
 For each headline, provide a title, subtitle and a paragraph.
 
 Report:
