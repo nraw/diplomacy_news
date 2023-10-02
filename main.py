@@ -17,6 +17,7 @@ countries = ["Austria", "England", "France", "Germany", "Italy", "Russia", "Turk
 def main():
     force = True
     orders, units_by_player, territories, season = get_backstabbr(force)
+    print(season)
     if orders is None:
         return None
     summaries = get_battles(orders, territories)
